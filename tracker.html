@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tracking Info</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #ffffff;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .wrapper {
+      max-width: 700px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeIn 1.5s ease-out;
+    }
+
+    h1 {
+      font-size: 2.8em;
+      margin-bottom: 30px;
+      background: linear-gradient(45deg, #00ffe7, #00aaff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: slideInTop 1.2s ease;
+    }
+
+    .container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .block {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 25px;
+      font-size: 1.2em;
+      box-shadow: 0 8px 20px rgba(0, 255, 231, 0.1);
+      backdrop-filter: blur(5px);
+      transition: transform 0.3s ease;
+      animation: fadeUp 1s ease forwards;
+      animation-delay: 0.5s;
+      opacity: 0;
+    }
+
+    .block:hover {
+      transform: translateY(-5px);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    input {
+      padding: 12px;
+      font-size: 1em;
+      width: 90%;
+      max-width: 400px;
+      border-radius: 8px;
+      border: none;
+      margin-top: 10px;
+      transition: transform 0.2s ease;
+    }
+
+    input:focus {
+      outline: none;
+      transform: scale(1.05);
+    }
+
+    button {
+      padding: 14px 30px;
+      font-size: 1.1em;
+      background-color: #00ffe7;
+      color: #0f2027;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 255, 231, 0.3);
+      transition: background-color 0.3s ease, transform 0.3s ease;
+      animation: pulseGlow 2s infinite;
+    }
+
+    button:hover {
+      background-color: #00e6cc;
+      transform: scale(1.05);
+    }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 2.2em; }
+      .block { font-size: 1em; padding: 20px; }
+      input { width: 100%; }
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideInTop {
+      0% { opacity: 0; transform: translateY(-50px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 0 rgba(0, 255, 231, 0.4); }
+      50% { box-shadow: 0 0 20px rgba(0, 255, 231, 0.8); }
+      100% { box-shadow: 0 0 0 rgba(0, 255, 231, 0.4); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>Tracking Information</h1>
+    <div class="container">
+      <div class="block" id="current-location">
+        🧭 Current Location: <br><em>Fetching coordinates...</em>
+      </div>
+      <div class="block">
+        📍 Destination Input: <br>
+        <input type="text" id="destination" placeholder="Enter destination city" />
+      </div>
+    </div>
+    <button onclick="saveDestinationAndContinue()">Continue</button>
+  </div>
+
+  <script>
+    function getCurrentLocation() {
+      const locationDiv = document.getElementById("current-location");
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude.toFixed(6);
+            const lng = position.coords.longitude.toFixed(6);
+            locationDiv.innerHTML = `🧭 Current Coordinates:<br><strong>${lat}, ${lng}</strong>`;
+          },
+          (error) => {
+            locationDiv.innerHTML = `🧭 Error fetching location:<br><strong>${error.message}</strong>`;
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      } else {
+        locationDiv.innerHTML = "🧭 Geolocation is not supported by this browser.";
+      }
+    }
+
+    function saveDestinationAndContinue() {
+      const destinationInput = document.getElementById("destination");
+      localStorage.setItem("destination", destinationInput.value);
+      window.location.href = 'result.html';
+    }
+
+    getCurrentLocation();
+  </script>
+</body>
+</html>

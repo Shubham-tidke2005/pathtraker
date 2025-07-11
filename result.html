@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Path Tracker Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      animation: fadeInBody 1s ease;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      background: linear-gradient(45deg, #00ffe7, #00aaff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 15px;
+      animation: slideDown 1.2s ease-out;
+    }
+
+    .block {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 20px;
+      width: 90%;
+      max-width: 900px;
+      backdrop-filter: blur(5px);
+      box-shadow: 0 8px 20px rgba(0, 255, 231, 0.1);
+      margin-top: 20px;
+      opacity: 0;
+      transform: scale(0.95);
+      animation: zoomIn 1s ease forwards;
+    }
+
+    .block:nth-of-type(2) {
+      animation-delay: 0.3s;
+    }
+
+    #map {
+      height: 450px;
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 255, 231, 0.4);
+      animation: borderPulse 3s infinite ease-in-out;
+    }
+
+    #details p {
+      margin: 8px 0;
+      font-size: 1.1em;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.8s forwards;
+    }
+
+    #details p:nth-child(1) { animation-delay: 0.6s; }
+    #details p:nth-child(2) { animation-delay: 0.8s; }
+    #details p:nth-child(3) { animation-delay: 1s; }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 2em; }
+      #map { height: 300px; }
+    }
+
+    /* Animations */
+    @keyframes fadeInBody {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-50px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes zoomIn {
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes borderPulse {
+      0%, 100% {
+        box-shadow: 0 0 15px rgba(0, 255, 231, 0.3);
+      }
+      50% {
+        box-shadow: 0 0 30px rgba(0, 255, 231, 0.6);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Path Tracker</h1>
+
+  <div class="block">
+    <div id="map">Loading map...</div>
+  </div>
+
+  <div class="block" id="details">
+    <p>📍 Destination: <strong id="dest-name">Loading...</strong></p>
+    <p>📏 Distance: <strong id="distance">Calculating...</strong></p>
+    <p>🕒 Estimated Time: <strong id="duration">Calculating...</strong></p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const destinationName = localStorage.getItem("destination");
+    document.getElementById("dest-name").innerText = destinationName || "Not found";
+
+    async function geocodeDestination(destination) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+        };
+      } else {
+        throw new Error("Destination not found on map");
+      }
+    }
+
+    async function fetchRouteDetails(start, end) {
+      const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Route request failed");
+      const data = await res.json();
+
+      const route = data.routes[0];
+      const distance = (route.distance / 1000).toFixed(2);
+      const duration = (route.duration / 60).toFixed(1);
+
+      document.getElementById("distance").innerText = `${distance} km`;
+      document.getElementById("duration").innerText = `${duration} minutes`;
+
+      return route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+    }
+
+    async function initMap() {
+      if (!navigator.geolocation) {
+        alert("Geolocation not supported.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const current = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        try {
+          const destination = await geocodeDestination(destinationName);
+
+          const map = L.map('map').setView([current.lat, current.lng], 7);
+
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+          }).addTo(map);
+
+          L.marker([current.lat, current.lng]).addTo(map).bindPopup("🧭 You are here").openPopup();
+          L.marker([destination.lat, destination.lng]).addTo(map).bindPopup("📍 " + destinationName);
+
+          const routeCoords = await fetchRouteDetails(current, destination);
+          L.polyline(routeCoords, { color: 'cyan', weight: 5 }).addTo(map);
+
+        } catch (error) {
+          alert("Error: " + error.message);
+        }
+      }, () => {
+        alert("Failed to get current location.");
+      });
+    }
+
+    initMap();
+  </script>
+</body>
+</html>
